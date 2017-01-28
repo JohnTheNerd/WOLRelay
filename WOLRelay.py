@@ -26,11 +26,7 @@ def md5(toHash):
 
 def wakeComputer(macaddress):
 # Thanks to https://github.com/remcohaszing/pywakeonlan for the magic packet generating code!
-    
-    # host = macaddress.split(str=":", num=6)
-    # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    # sock.sendto((('\xff'*6 + '\x' + host[0] + '\x' + host[1] + '\x' + host[2] + '\x' + host[3] + '\x' + host[4] + '\x' + host[5])*16), ('192.168.1.255', 80))
-    
+  
 # Check macaddress format and try to compensate.
     if len(macaddress) == 12:
         pass
