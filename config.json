@@ -1,0 +1,18 @@
+{
+  "APIPort": 5000,
+  "broadcastAddress": "255.255.255.255",
+  "broadcastPort": 9,
+  "localIP": "0.0.0.0",
+  "hosts": [
+    "192.168.2.100"
+  ],
+  "logLevel": 20,
+  "arp": {
+    "scanInterval": 300,
+    "macAddresses":
+    [
+      "00:00:00:00:00:00",
+      "11:11:11:11:11:11"
+    ]
+  }
+}
