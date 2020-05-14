@@ -4,8 +4,6 @@ A Wake-on-LAN relaying software written in Python. It is currently only tested o
 
 I don't like leaving my desktop on 24/7 because it's bad for the environment, could shorten the lifespan of my computer, and would have a big impact on my power bill. But I also _love_ streaming games to my hacked Nintendo Switch, and generally having access to the computer from virtually anywhere.
 
-This application is an API that will send what's called a "magic packet" to the pre-determined MAC address in the configuration file if the endpoint is called.
-
 ## ARP Scanning Support
 
 As an experimental feature, WOLRelay can also tell you when the machine was last online, along with its last reported IP address. This does not require any agent process on the target machine. This is done via scanning the network for all ARP reply packets from MAC addresses that interest us.
@@ -18,7 +16,9 @@ Please keep in mind that ARP scans can cause disruption in the network if done t
 
 - Clone this Git repository.
 
-- Edit the configuration file (all fields other than ARP are required):
+- Install all dependencies by running `pip3 install -r requirements.txt`
+
+- Edit the configuration file (all fields required unless stated otherwise):
 
     - **APIPort**: The port WOLRelay's Flask API will run on.
 
@@ -43,3 +43,21 @@ Please keep in mind that ARP scans can cause disruption in the network if done t
     - If you do not want to run this application as superuser, you can grant the "cap_net_raw" capability to the Python interpreter by running (change 3.6 to your exact Python version) `sudo setcap cap_net_raw=eip $(which python3.6)`
 
     - If you are utilizing ARP, you must also grant the same capability to tcpdump. You can do so by running `sudo setcap cap_net_raw=eip $(which tcpdump)`
+
+## API Endpoints
+
+- `/getIP?mac=00:00:00:00:00:00` (GET)
+
+    - For a given MAC address, returns the IP address and the timestamp for when we recorded it.
+
+    - Returns HTTP501 if ARP is disabled from the configuration file.
+
+    - Returns HTTP400 if the MAC address is invalid or does not exist in our ARP table.
+
+    - Returns HTTP204 if the MAC address does not have a corresponding IP address yet.
+
+- `/sendPacket` (POST)
+
+    - For a given MAC address as `mac` in a JSON body, send a magic packet.
+
+    - Returns HTTP400 if the MAC address appears to be invalid.
