@@ -36,6 +36,8 @@ Please keep in mind that ARP scans can cause disruption in the network if done t
 
         - **scanInterval**: How long should we wait between ARP scans (in seconds)? Remove entirely to disable ARP scanning and rely on ARP announcement packets, but keep in mind that this have a cost in accuracy as not all devices will send ARP announcements unless specifically requested.
 
+        - **scanInterfaces**: This field is optional. A list of strings, indicating the names of network interfaces to sniff ARP packets from.
+
         - **macAddresses**: Required if ARP is enabled. A list of strings, defining MAC addresses to track online status of.
 
 - Run the application _as a superuser_. This is required because you need special permissions in order to send arbitrary packets to the network (such as the magic packet).

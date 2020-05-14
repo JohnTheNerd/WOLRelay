@@ -58,11 +58,20 @@ def processARP(packets):
             ARPTable[mac] = (ip, datetime.datetime.now())
 
 def sniffARPPackets(interface = None):
-  try:
-    sniff(prn=processARP, filter="(arp[6:2] = 2)")  # run scapy with BPF for ARP packets with opcode 2
-  except Exception:
-    logger.warning("Running scapy in filtered mode failed, filtering without the help of Berkeley Packet Filtering. This is going to be VERY slow and unreliable. You should try installing tcpdump if you're on Linux, and Npcap if you're on Windows.")
-    sniff(prn=processARP)     # filtering failed, fall back to inspecting every packet
+  if interface:
+    try:
+      sniff(prn=processARP, iface=interface, filter="(arp[6:2] = 2)")  # run scapy with BPF for ARP packets with opcode 2
+    except Exception:
+      logger.warning("Running scapy in filtered mode failed, filtering without the help of Berkeley Packet Filtering. This is going to be VERY slow and unreliable. You should try installing tcpdump if you're on Linux, and Npcap if you're on Windows.")
+      traceback.print_exc()
+      sniff(prn=processARP)     # filtering failed, fall back to inspecting every packet
+  else:
+    try:
+      sniff(prn=processARP, filter="(arp[6:2] = 2)")  # run scapy with BPF for ARP packets with opcode 2
+    except Exception:
+      logger.warning("Running scapy in filtered mode failed, filtering without the help of Berkeley Packet Filtering. This is going to be VERY slow and unreliable. You should try installing tcpdump if you're on Linux, and Npcap if you're on Windows.")
+      traceback.print_exc()
+      sniff(prn=processARP)     # filtering failed, fall back to inspecting every packet
 
 def sendARPRequest(interface, destination):
     logger.debug('sending ARP request to ' + destination)
@@ -156,8 +165,13 @@ def wakeComputer():
 
 if __name__ == '__main__':
   if 'arp' in config.keys():
-    sniffingProcess = multiprocessing.Process(target=sniffARPPackets)
-    sniffingProcess.start()
+    if 'scanInterfaces' in config['arp'].keys():
+      for interface in config['arp']['scanInterfaces']:
+        sniffingProcess = multiprocessing.Process(target=sniffARPPackets, args=[interface])
+        sniffingProcess.start()
+    else:
+      sniffingProcess = multiprocessing.Process(target=sniffARPPackets)
+      sniffingProcess.start()
 
     for mac in config['arp']['macAddresses']:
       ARPTable[mac.upper()] = None
