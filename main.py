@@ -12,7 +12,8 @@ import time
 
 from scapy.all import sniff
 from wakeonlan import send_magic_packet
-from flask import Flask, request, abort
+from flask import Flask, request, abort, send_from_directory
+from werkzeug.exceptions import NotFound
 
 app = Flask(__name__)
 
@@ -27,14 +28,6 @@ logger.setLevel(config['logLevel'])
 
 multiprocessingManager = multiprocessing.Manager()
 ARPTable = multiprocessingManager.dict()
-
-# TODO make sure logger works
-# TODO test API endpoints
-# TODO make a front-end
-# TODO ensure config options are actually used
-# TODO update README with all config options and how one can use them. also document that the interfaces option in arp, if left blank, will pick the default interface. arp only works on /24 as of now
-# TODO actually scan the network
-# TODO use all interfaces given in the arp config, if present
 
 @app.before_request
 def beforeRequest():
@@ -55,7 +48,7 @@ def processARP(packets):
             mac = packet.hwsrc
             ip = packet.psrc
             logging.debug('IP ' + ip + ' is assigned to ' + mac + ' as of ' + datetime.datetime.now().isoformat())
-            ARPTable[mac] = (ip, datetime.datetime.now())
+            ARPTable[mac.upper()] = (ip, datetime.datetime.now())
 
 def sniffARPPackets(interface = None):
   if interface:
@@ -116,28 +109,43 @@ Returns HTTP501 if ARP is disabled from the configuration file.
 Returns HTTP400 if the MAC address is invalid or does not exist in our ARP table.
 Returns HTTP204 if the MAC address does not have a corresponding IP address yet.
 
-@mac MAC address to scan ARP table for.
+@mac MAC address to scan ARP table for. If undefined, data for all MAC addresses will be returned.
 """
-@app.route('/getIP')
-def getIP():
-  mac = request.args.get('mac')
+@app.route('/getStatus')
+def getStatus():
+  mac = None
+  if mac in request.args:
+    mac = request.args.get('mac')
+    mac = mac.upper()
 
   if 'arp' not in config.keys():
-    abort(501)
-    return {"successful": False, "error": "ARP is disabled in the configuration file"}
-  if mac not in ARPTable.keys():
-    abort(400)
-    return {"successful": False, "error": "MAC is not defined in the configuration file"}
-  if not ARPTable[mac]:
-    abort(204)
-    return {"successful": False, "error": "The server does not have any information about this MAC address yet"}
+    return (json.dumps({"error": "ARP is disabled in the configuration file"}), 501)
+  if mac:
+    if mac not in ARPTable.keys():
+      return (json.dumps({"error": "MAC is not defined in the configuration file"}), 400)
+    if not ARPTable[mac]:
+      return (json.dumps({"error": "The server does not have any information about this MAC address yet"}), 204)
 
-  return json.dumps({
-    "successful": True,
-    "IP": ARPTable[mac][0],
-    "lastActive": ARPTable[mac][1].isoformat()
-  })
-
+    return json.dumps([{
+      "IP": ARPTable[mac][0],
+      "lastSeen": ARPTable[mac][1].isoformat()
+    }])
+  else:
+    result = []
+    for mac in ARPTable.keys():
+      if not ARPTable[mac]:
+        result.append({
+          "MAC": mac,
+          "IP": None,
+          "lastSeen": None
+        })
+      else:
+        result.append({
+        "MAC": mac,
+        "IP": ARPTable[mac][0],
+        "lastSeen": ARPTable[mac][1].isoformat()
+    })
+    return json.dumps(result)
 
 """
 Sends a Wake-on-LAN "magic packet" to the specified MAC address.
@@ -146,22 +154,36 @@ Returns HTTP400 if the MAC address appears to be invalid.
 
 @mac MAC address to send packet to.
 """
-@app.route('/wakeComputer', methods=['POST'])
-def wakeComputer():
+@app.route('/wakeDevice', methods=['POST'])
+def wakeDevice():
   mac = request.json['mac']
-
   mac = mac.upper()
-  if not re.match("[0-9a-f]{2}([-:]?)[0-9a-f]{2}(\\1[0-9a-f]{2}){4}$", mac.lower()):
-    abort(400)
-    return json.dumps({"successful": False, "error": "MAC address verification failed"})
+
+  if not re.match("[0-9A-F]{2}([-:]?)[0-9A-F]{2}(\\1[0-9A-F]{2}){4}$", mac.lower()):
+    return json.dumps({"error": "MAC address verification failed"}, 400)
 
   try:
     send_magic_packet(mac, ip_address=config['broadcastAddress'], port=config['broadcastPort'])
-    return json.dumps({"successful": True})
+    return json.dumps({"error": None})
   except Exception:
-    abort(500)
-    return json.dumps({"successful": False, "error": traceback.format_exc()})
+    return (json.dumps({"error": traceback.format_exc()}), 500)
 
+# hackity hack
+# serve static files from the static directory
+# this is so that the user doesn't need to configure a webserver to run and/or debug
+# but it's encouraged to do so anyway for performance reasons
+@app.route('/<path:path>')
+def staticHost(path):
+  try:
+    return send_from_directory(os.path.join(scriptPath, 'static'), path)
+  except NotFound as e:
+    if path.endswith("/"):
+      return send_from_directory(os.path.join(scriptPath, 'static'), path + "index.html")
+    raise e
+
+@app.route('/')
+def staticIndex():
+  return send_from_directory(os.path.join(scriptPath, 'static'), "index.html")
 
 if __name__ == '__main__':
   if 'arp' in config.keys():

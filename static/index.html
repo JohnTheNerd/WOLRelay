@@ -1,0 +1,56 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>WOLRelay</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+	</head>
+	<body class="is-preload">
+
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Main -->
+					<section id="main">
+						<header id=deviceSection>
+							<!-- <span class="avatar"><img src="images/avatar.jpg" alt="" /></span> -->
+							<h2>Device list</h2>
+							<table id="deviceTable">
+							</table>
+							<hr />
+						</header>
+
+						<h2>MAC Address</h2>
+						<form name="manualWakeForm" onsubmit="wakeDevice(); return false;">
+							<div class="fields">
+								<div class="field">
+									<input type="text" name="mac" id="mac" placeholder="00:00:00:00:00:00" minlength="17" maxlength="17" pattern="[0-9A-F]{2}([-:]?)[0-9A-F]{2}(\1[0-9A-F]{2}){4}$" title="Must be a valid MAC address, separated by : or -." required/>
+								</div>
+								<hr />
+							<ul class="actions special">
+								<input type=image value=""><i class="fas fa-power-off fa-3x" onclick="powerButtonPressed()" title="Power on"></i></input>
+							</ul>
+						</form>
+					</section>
+
+				<!-- Footer -->
+					<footer id="footer">
+						<ul class="copyright">
+							<li>Design: <a href="http://html5up.net">HTML5 UP</a></li>
+						</ul>
+					</footer>
+
+			</div>
+
+		<!-- Scripts -->
+			<script>
+				if ('addEventListener' in window) {
+					window.addEventListener('load', function() { document.body.className = document.body.className.replace(/\bis-preload\b/, ''); });
+					document.body.className += (navigator.userAgent.match(/(MSIE|rv:11\.0)/) ? ' is-ie' : '');
+				}
+			</script>
+			<script src=assets/js/main.js></script>
+	</body>
+</html>
