@@ -46,11 +46,11 @@ Please keep in mind that ARP scans can cause disruption in the network if done t
 
 - If you are running this in a production environment, it is highly recommended that you serve the files in the `static` folder inside an actual web server (like Apache or Nginx) and just proxy the API endpoints mentioned below to this application. This is optional, although WOLRelay will happily serve the front-end but it will not be as performant.
 
-- Run the application _as a superuser_. This is required because you need special permissions in order to send arbitrary packets to the network (such as the magic packet).
+- This application requires the "cap_net_raw" Linux capability to scan the network for ARP packets and to send the magic packet. To do this, you can do either of:
 
-    - If you do not want to run this application as superuser, you can grant the "cap_net_raw" capability to the Python interpreter by running (change 3.6 to your exact Python version) `sudo setcap cap_net_raw=eip $(which python3.6)`
+    - Run the application _as a superuser_. For obvious reasons this is not recommended.
 
-    - If you are utilizing ARP, you must also grant the same capability to tcpdump. You can do so by running `sudo setcap cap_net_raw=eip $(which tcpdump)`
+    - Grant the "cap_net_raw" capability to the Python interpreter by running (change 3.6 to your exact Python version) `sudo setcap cap_net_raw=eip $(which python3.6)` _and_ grant the same capability to tcpdump by running `sudo setcap cap_net_raw=eip $(which tcpdump)`
 
 ## API Endpoints
 
