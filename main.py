@@ -2,6 +2,7 @@
 
 import datetime
 import multiprocessing
+import multiprocessing.dummy
 import os
 import json
 import re
@@ -76,24 +77,28 @@ def sendARPRequest(interface, destination):
     logger.debug('sending ARP request to ' + destination)
     scapy.layers.l2.arping(destination, iface=interface, timeout=0, cache=True, verbose=False)
 
-def scanNetwork():
+def scanNetwork(scanInterface = None):
   while True:
     try:
-      pool = multiprocessing.Pool(processes=10)
+      pool = multiprocessing.dummy.Pool(processes=10)
       processes = []
 
       for network, netmask, _, interface, address, _ in scapy.config.conf.route.routes:
-        # skip loopback network and default gw
-        if network == 0 or interface == 'lo' or address == '127.0.0.1' or address == '0.0.0.0':
-          continue
 
-        if netmask <= 0 or netmask == 0xFFFFFFFF:
-          continue
+        if interface:
+          if interface != scanInterface:
+            continue
+        else:
+          # skip loopback network and default gw
+          if network == 0 or interface == 'lo' or address == '127.0.0.1' or address == '0.0.0.0':
+            continue
 
-        # skip docker interface
-        if interface.startswith('docker') or interface.startswith('br-'):
-          continue
+          if netmask <= 0 or netmask == 0xFFFFFFFF:
+            continue
 
+          # skip docker interface
+          if interface.startswith('docker') or interface.startswith('br-'):
+            continue
         subnet = '.'.join(address.split('.')[:-1])
         IPRange = [subnet + '.' + str(i) for i in range(1, 254)]
         boundARPRequest = functools.partial(sendARPRequest, interface)
@@ -131,7 +136,6 @@ def status():
       return (json.dumps({"error": "The given MAC address is not defined in the configuration file!"}), 400)
     if not ARPTable[mac]:
       return (json.dumps({"error": "We don't have any information about this MAC address yet!"}), 204)
-
     return json.dumps(ARPTable[mac])
   else:
     result = []
@@ -197,7 +201,12 @@ if __name__ == '__main__':
       }
 
     if 'scanInterval' in config['arp'].keys():
-      scanningProcess = multiprocessing.Process(target=scanNetwork)
-      scanningProcess.start()
+      if 'scanInterfaces' in config['arp'].keys():
+        for interface in config['arp']['scanInterfaces']:
+          scanningProcess = multiprocessing.Process(target=scanNetwork, args=[interface])
+          scanningProcess.start()
+      else:
+        scanningProcess = multiprocessing.Process(target=scanNetwork)
+        scanningProcess.start()
 
   app.run(config['localIP'], port=config['APIPort'], threaded=True)
