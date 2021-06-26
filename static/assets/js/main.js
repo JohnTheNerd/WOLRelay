@@ -108,7 +108,7 @@ function loadData() {
     }
   };
 
-  xmlHTTP.open("GET", "/status", true);
+  xmlHTTP.open("GET", "status", true);
   xmlHTTP.send();
 }
 
@@ -119,7 +119,7 @@ function wakeDevice(mac) {
     }
 
     var xmlHTTP = new XMLHttpRequest();   // new HttpRequest instance 
-    xmlHTTP.open("POST", "/wake");
+    xmlHTTP.open("POST", "wake");
     xmlHTTP.setRequestHeader("Content-Type", "application/json");
     xmlHTTP.send(JSON.stringify({"mac": mac}));
 
