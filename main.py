@@ -10,6 +10,7 @@ import functools
 import logging
 import time
 
+import scapy
 from scapy.all import sniff
 from wakeonlan import send_magic_packet
 from flask import Flask, request, abort, send_from_directory
