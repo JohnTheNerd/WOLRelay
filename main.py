@@ -53,7 +53,7 @@ def processARP(packets):
             ARPTable[mac.upper()] = {
               "name": name,
               "ip": ip,
-              "lastSeen": datetime.datetime.now()
+              "lastSeen": datetime.datetime.now().isoformat()
             }
 
 def sniffARPPackets(interface = None):
