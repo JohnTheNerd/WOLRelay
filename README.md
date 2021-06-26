@@ -2,7 +2,7 @@
 
 A Wake-on-LAN relaying software written in Python that is able to listen for ARP reply packets to track IP addresses without any agent process running on the target machine. It is currently only tested on Linux.
 
-I don't like leaving my desktop on 24/7 because it's bad for the environment, could shorten the lifespan of my computer, and would have a big impact on my power bill. But I also _love_ streaming games to my hacked Nintendo Switch, and generally having access to the computer from virtually anywhere.
+I don't like leaving my desktop on 24/7 because it's bad for the environment, could shorten the lifespan of my computer, and would have a big impact on my power bill. But I also _love_ streaming games to my hacked Nintendo Switch, and generally having access to it from virtually anywhere.
 
 Special thanks to [HTML5 UP!](https://html5up.net) for the awesome template I have taken and modified to use as the front-end!
 
@@ -10,7 +10,7 @@ Special thanks to [HTML5 UP!](https://html5up.net) for the awesome template I ha
 
 ## ARP Scanning Support
 
-WOLRelay can also tell you when the machine was last online, along with its last reported IP address. This does not require any agent process on the target machine. This is done via scanning the network for all ARP reply packets from MAC addresses that interest us.
+WOLRelay can also tell you when the machine was last online, along with its last reported IP address. This does not require any agent process on the target machine, but is instead done via scanning the network for all ARP reply packets from MAC addresses that interest us.
 
 In order to use this functionality, you should have the tcpdump package installed. Although this is not required, tcpdump is used by Scapy in order to utilize BPF which provides kernel-backed fast packet processing. Otherwise, every single packet sent through the network will be moved to userspace and processed by pure Python code, which causes lost packets and sluggish performance.
 
