@@ -58,20 +58,20 @@ Please keep in mind that ARP scans can cause disruption in the network if done t
 
     - For a given MAC address, returns the IP address and the timestamp for when we recorded it.
 
-    - Returns HTTP501 if ARP is disabled from the configuration file.
+    - Returns HTTP 501 if ARP is disabled from the configuration file.
 
 - `/status?mac=00:00:00:00:00:00` (GET)
 
     - For a given MAC address, returns the IP address and the timestamp for when we recorded it.
 
-    - Returns HTTP501 if ARP is disabled from the configuration file.
+    - Returns HTTP 501 if ARP is disabled from the configuration file.
 
-    - Returns HTTP400 if the MAC address is invalid or does not exist in our ARP table.
+    - Returns HTTP 400 if the MAC address is invalid or does not exist in our ARP table.
 
-    - Returns HTTP204 if the MAC address does not have a corresponding IP address yet.
+    - Returns HTTP 204 if the MAC address does not have a corresponding IP address yet.
 
 - `/wake` (POST)
 
     - For a given MAC address as `mac` in a JSON body, send a magic packet.
 
-    - Returns HTTP400 if the MAC address appears to be invalid.
+    - Returns HTTP 400 if the MAC address appears to be invalid.
