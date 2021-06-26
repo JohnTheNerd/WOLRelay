@@ -1,0 +1,14 @@
+version: '3.7'
+services:
+  wolrelay:
+    init: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+    network_mode: host
+    image: wolrelay:latest
+    build:
+        context: .
+        dockerfile: Dockerfile
