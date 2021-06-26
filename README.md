@@ -12,7 +12,7 @@ Special thanks to [HTML5 UP!](https://html5up.net) for the awesome template I ha
 
 WOLRelay can also tell you when the machine was last online, along with its last reported IP address. This does not require any agent process on the target machine. This is done via scanning the network for all ARP reply packets from MAC addresses that interest us.
 
-In order to use this functionality, you should have the tcpdump package installed. Although this is not required, tcpdump is used by Scapy in order to utilize BPF which provides kernel-backed fast packet processing. Otherwise, every single packet sent through the network will be moved to userspace and processed by pure Python code, which will result in lost packets and sluggish performance.
+In order to use this functionality, you should have the tcpdump package installed. Although this is not required, tcpdump is used by Scapy in order to utilize BPF which provides kernel-backed fast packet processing. Otherwise, every single packet sent through the network will be moved to userspace and processed by pure Python code, which causes lost packets and sluggish performance.
 
 Please keep in mind that ARP scans can cause disruption in the network if done too frequently, and may show up as an attack in certain firewall solutions.
 
@@ -38,13 +38,13 @@ Please keep in mind that ARP scans can cause disruption in the network if done t
 
     - **arp**: This entire field is optional, removing it will disable all ARP support. It is a dictionary with keys of:
 
-        - **scanInterval**: How long should we wait between ARP scans (in seconds)? Please keep in mind that ARP scanning currently only works on /24 networks. Remove entirely to disable ARP scanning and rely on ARP announcement packets, but keep in mind that this will have a cost in accuracy as not all devices will send ARP announcements unless specifically requested.
+        - **scanInterval**: How long should we wait between ARP scans (in seconds)? Remove entirely to disable ARP scanning and rely on ARP announcement packets, but keep in mind that this will have a cost in accuracy as not all devices will send ARP announcements unless specifically requested. ARP scanning currently only works on /24 networks (which is basically every home network).
 
         - **scanInterfaces**: This field is optional. A list of strings, indicating the names of network interfaces to sniff ARP packets from.
 
-        - **macAddresses**: Required if ARP is enabled. A list of strings, defining MAC addresses to track online status of.
+        - **devices**: Required if ARP is enabled. A list of objects with two keys, "name" defining the display name and "mac" defining the MAC address.
 
-- If you are running this in a production environment, it is highly recommended that you serve the files in the `static` folder inside an actual web server (like Apache or Nginx) and just proxy the API endpoints mentioned below to this application. This is optional, although WOLRelay will happily serve the front-end but it will not be as performant.
+- If you are running this in a production environment, it is recommended that you serve the files in the `static` folder inside an actual web server and just proxy the API endpoints mentioned below to this application. Although WOLRelay will happily serve the front-end, it will not be as performant.
 
 - This application requires the "cap_net_raw" Linux capability to scan the network for ARP packets and to send the magic packet. To do this, you can do either of:
 
@@ -54,13 +54,13 @@ Please keep in mind that ARP scans can cause disruption in the network if done t
 
 ## API Endpoints
 
-- `/getStatus` (GET)
+- `/status` (GET)
 
     - For a given MAC address, returns the IP address and the timestamp for when we recorded it.
 
     - Returns HTTP501 if ARP is disabled from the configuration file.
 
-- `/getStatus?mac=00:00:00:00:00:00` (GET)
+- `/status?mac=00:00:00:00:00:00` (GET)
 
     - For a given MAC address, returns the IP address and the timestamp for when we recorded it.
 
@@ -70,7 +70,7 @@ Please keep in mind that ARP scans can cause disruption in the network if done t
 
     - Returns HTTP204 if the MAC address does not have a corresponding IP address yet.
 
-- `/wakeDevice` (POST)
+- `/wake` (POST)
 
     - For a given MAC address as `mac` in a JSON body, send a magic packet.
 
