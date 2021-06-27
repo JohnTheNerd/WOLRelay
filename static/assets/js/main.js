@@ -62,23 +62,38 @@ function loadData() {
         }
     
         else if (elapsed < msPerHour) {
-            lastSeen = Math.floor(elapsed/msPerMinute) + ' minutes ago';   
+            if (Math.floor(elapsed/msPerMinute) == 1) {
+                lastSeen = Math.floor(elapsed/msPerMinute) + ' minute ago';
+            }
+            else lastSeen = Math.floor(elapsed/msPerMinute) + ' minutes ago';
         }
     
         else if (elapsed < msPerDay ) {
-            lastSeen = Math.floor(elapsed/msPerHour ) + ' hours ago';   
+            if (Math.floor(elapsed/msPerHour) == 1) {
+                lastSeen = Math.floor(elapsed/msPerHour ) + ' hour ago';
+            }
+            else lastSeen = Math.floor(elapsed/msPerHour ) + ' hours ago';
         }
     
         else if (elapsed < msPerMonth) {
-            lastSeen = 'approximately ' + Math.floor(elapsed/msPerDay) + ' days ago';   
+            if (Math.floor(elapsed/msPerDay) == 1) {
+                lastSeen = 'approximately ' + Math.floor(elapsed/msPerDay) + ' day ago';
+            }
+            else lastSeen = 'approximately ' + Math.floor(elapsed/msPerDay) + ' days ago';
         }
     
         else if (elapsed < msPerYear) {
-            lastSeen = 'approximately ' + Math.floor(elapsed/msPerMonth) + ' months ago';   
+            if (Math.floor(elapsed/msPerMonth) == 1) {
+                lastSeen = 'approximately ' + Math.floor(elapsed/msPerMonth) + ' month ago';
+            }
+            else lastSeen = 'approximately ' + Math.floor(elapsed/msPerMonth) + ' months ago';
         }
     
         else {
-            lastSeen = 'approximately ' + Math.floor(elapsed/msPerYear ) + ' years ago';   
+            if (Math.floor(elapsed/msPerYear) == 1) {
+                lastSeen = 'approximately ' + Math.floor(elapsed/msPerYear) + ' year ago';
+            }
+            else lastSeen = 'approximately ' + Math.floor(elapsed/msPerYear ) + ' years ago';
         }
       }
 
