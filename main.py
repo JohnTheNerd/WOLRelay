@@ -156,9 +156,6 @@ def wakeDevice():
   mac = request.json['mac']
   mac = mac.upper()
 
-  if not re.match("[0-9A-F]{2}([-:]?)[0-9A-F]{2}(\\1[0-9A-F]{2}){4}$", mac.lower()):
-    return json.dumps({"error": "MAC address verification failed"}, 400)
-
   try:
     send_magic_packet(mac, ip_address=config['broadcastAddress'], port=config['broadcastPort'])
     return json.dumps({"error": None})
