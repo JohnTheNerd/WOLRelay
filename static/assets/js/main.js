@@ -13,16 +13,19 @@ function loadData() {
     let table = document.createElement('table');
     let tableBody = document.createElement('tbody');
     let response = JSON.parse(xmlHTTP.responseText);
+    let nameColumn = document.createElement('th');
     let macColumn = document.createElement('th');
     let ipColumn = document.createElement('th');
     let timestampColumn = document.createElement('th');
     let actionsColumn = document.createElement('th');
+    nameColumn.innerHTML = 'Name';
     macColumn.innerHTML = 'MAC Address';
     ipColumn.innerHTML = 'IP Address';
     timestampColumn.innerHTML = 'Last Seen';
     actionsColumn.innerHTML = '<a href="#" onclick="loadData()"><i class="fas fa-sync" id="refreshButton" title="Refresh list"></i></a>'
     actionsColumn.classList.add("tinyTD");
     // add fa-spin class to item with ID refreshButton
+    tableBody.appendChild(nameColumn);
     tableBody.appendChild(macColumn);
     tableBody.appendChild(ipColumn);
     tableBody.appendChild(timestampColumn);
@@ -30,17 +33,18 @@ function loadData() {
     for (const id in response) {
       let row = document.createElement('tr');
 
-      let mac = response[id]['MAC'];
+      let name = response[id]['name'];
+      if (name == null) name = "&mdash;";
+
+      let mac = response[id]['mac'];
       if (mac == null) mac = "&mdash;";
 
-      let ip = response[id]['IP'];
+      let ip = response[id]['ip'];
       if (ip == null) ip = "&mdash;";
 
       let lastSeen = response[id]['lastSeen'];
       if (lastSeen == null) lastSeen = "&mdash;";
       else {
-
-        // TODO finish implementing last seen data
 
         parsedLastSeen = Date.parse(lastSeen);
         currentDate = Date.now();
@@ -52,9 +56,9 @@ function loadData() {
         const msPerYear = msPerDay * 365;
     
         var elapsed = currentDate - parsedLastSeen;
-    
+
         if (elapsed < msPerMinute) {
-            lastSeen = Math.floor(elapsed/1000) + ' seconds ago';   
+            lastSeen = 'Just now';
         }
     
         else if (elapsed < msPerHour) {
@@ -79,6 +83,9 @@ function loadData() {
       }
 
       var cell = document.createElement('td');
+      cell.innerHTML = name;
+      row.appendChild(cell);
+      var cell = document.createElement('td');
       cell.innerHTML = mac;
       row.appendChild(cell);
       var cell = document.createElement('td');
@@ -102,7 +109,7 @@ function loadData() {
     }
   };
 
-  xmlHTTP.open("GET", "/getStatus", true);
+  xmlHTTP.open("GET", "status", true);
   xmlHTTP.send();
 }
 
@@ -113,7 +120,7 @@ function wakeDevice(mac) {
     }
 
     var xmlHTTP = new XMLHttpRequest();   // new HttpRequest instance 
-    xmlHTTP.open("POST", "/wakeDevice");
+    xmlHTTP.open("POST", "wake");
     xmlHTTP.setRequestHeader("Content-Type", "application/json");
     xmlHTTP.send(JSON.stringify({"mac": mac}));
 
@@ -131,3 +138,4 @@ function powerButtonPressed() {
 }
 
 loadData();
+setInterval(loadData, 60000);

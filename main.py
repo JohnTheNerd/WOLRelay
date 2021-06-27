@@ -2,6 +2,7 @@
 
 import datetime
 import multiprocessing
+import multiprocessing.dummy
 import os
 import json
 import re
@@ -10,6 +11,7 @@ import functools
 import logging
 import time
 
+import scapy
 from scapy.all import sniff
 from wakeonlan import send_magic_packet
 from flask import Flask, request, abort, send_from_directory
@@ -47,8 +49,14 @@ def processARP(packets):
           if packet.hwsrc.upper() in ARPTable.keys():   # only process packets from MAC addresses we care about
             mac = packet.hwsrc
             ip = packet.psrc
-            logging.debug('IP ' + ip + ' is assigned to ' + mac + ' as of ' + datetime.datetime.now().isoformat())
-            ARPTable[mac.upper()] = (ip, datetime.datetime.now())
+            logging.debug('IP ' + ip + ' is assigned to ' + mac + ' as of ' + datetime.datetime.now().isoformat() + "Z")
+            name = ARPTable[mac.upper()]['name']
+            ARPTable[mac.upper()] = {
+              "name": name,
+              "mac": mac.upper(),
+              "ip": ip,
+              "lastSeen": datetime.datetime.now().isoformat() + "Z"
+            }
 
 def sniffARPPackets(interface = None):
   if interface:
@@ -70,24 +78,28 @@ def sendARPRequest(interface, destination):
     logger.debug('sending ARP request to ' + destination)
     scapy.layers.l2.arping(destination, iface=interface, timeout=0, cache=True, verbose=False)
 
-def scanNetwork():
+def scanNetwork(scanInterface = None):
   while True:
     try:
-      pool = multiprocessing.Pool(processes=10)
+      pool = multiprocessing.dummy.Pool(processes=10)
       processes = []
 
       for network, netmask, _, interface, address, _ in scapy.config.conf.route.routes:
-        # skip loopback network and default gw
-        if network == 0 or interface == 'lo' or address == '127.0.0.1' or address == '0.0.0.0':
-          continue
 
-        if netmask <= 0 or netmask == 0xFFFFFFFF:
-          continue
+        if interface:
+          if interface != scanInterface:
+            continue
+        else:
+          # skip loopback network and default gw
+          if network == 0 or interface == 'lo' or address == '127.0.0.1' or address == '0.0.0.0':
+            continue
 
-        # skip docker interface
-        if interface.startswith('docker') or interface.startswith('br-'):
-          continue
+          if netmask <= 0 or netmask == 0xFFFFFFFF:
+            continue
 
+          # skip docker interface
+          if interface.startswith('docker') or interface.startswith('br-'):
+            continue
         subnet = '.'.join(address.split('.')[:-1])
         IPRange = [subnet + '.' + str(i) for i in range(1, 254)]
         boundARPRequest = functools.partial(sendARPRequest, interface)
@@ -111,40 +123,25 @@ Returns HTTP204 if the MAC address does not have a corresponding IP address yet.
 
 @mac MAC address to scan ARP table for. If undefined, data for all MAC addresses will be returned.
 """
-@app.route('/getStatus')
-def getStatus():
+@app.route('/status')
+def status():
   mac = None
-  if mac in request.args:
+  if 'mac' in request.args:
     mac = request.args.get('mac')
     mac = mac.upper()
 
   if 'arp' not in config.keys():
-    return (json.dumps({"error": "ARP is disabled in the configuration file"}), 501)
+    return (json.dumps({"error": "ARP is disabled in the configuration file!"}), 501)
   if mac:
     if mac not in ARPTable.keys():
-      return (json.dumps({"error": "MAC is not defined in the configuration file"}), 400)
+      return (json.dumps({"error": "The given MAC address is not defined in the configuration file!"}), 400)
     if not ARPTable[mac]:
-      return (json.dumps({"error": "The server does not have any information about this MAC address yet"}), 204)
-
-    return json.dumps([{
-      "IP": ARPTable[mac][0],
-      "lastSeen": ARPTable[mac][1].isoformat()
-    }])
+      return (json.dumps({"error": "We don't have any information about this MAC address yet!"}), 204)
+    return json.dumps(ARPTable[mac])
   else:
     result = []
     for mac in ARPTable.keys():
-      if not ARPTable[mac]:
-        result.append({
-          "MAC": mac,
-          "IP": None,
-          "lastSeen": None
-        })
-      else:
-        result.append({
-        "MAC": mac,
-        "IP": ARPTable[mac][0],
-        "lastSeen": ARPTable[mac][1].isoformat()
-    })
+      result.append(ARPTable[mac])
     return json.dumps(result)
 
 """
@@ -154,7 +151,7 @@ Returns HTTP400 if the MAC address appears to be invalid.
 
 @mac MAC address to send packet to.
 """
-@app.route('/wakeDevice', methods=['POST'])
+@app.route('/wake', methods=['POST'])
 def wakeDevice():
   mac = request.json['mac']
   mac = mac.upper()
@@ -195,11 +192,23 @@ if __name__ == '__main__':
       sniffingProcess = multiprocessing.Process(target=sniffARPPackets)
       sniffingProcess.start()
 
-    for mac in config['arp']['macAddresses']:
-      ARPTable[mac.upper()] = None
+    for device in config['arp']['devices']:
+      name = device['name']
+      mac = device['mac']
+      ARPTable[mac.upper()] = {
+        "name": name,
+        "mac": mac.upper(),
+        "ip": None,
+        "lastSeen": None
+      }
 
     if 'scanInterval' in config['arp'].keys():
-      scanningProcess = multiprocessing.Process(target=scanNetwork)
-      scanningProcess.start()
+      if 'scanInterfaces' in config['arp'].keys():
+        for interface in config['arp']['scanInterfaces']:
+          scanningProcess = multiprocessing.Process(target=scanNetwork, args=[interface])
+          scanningProcess.start()
+      else:
+        scanningProcess = multiprocessing.Process(target=scanNetwork)
+        scanningProcess.start()
 
   app.run(config['localIP'], port=config['APIPort'], threaded=True)

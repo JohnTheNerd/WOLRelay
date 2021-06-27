@@ -8,11 +8,16 @@
   ],
   "logLevel": 20,
   "arp": {
-    "scanInterval": 300,
-    "macAddresses":
-    [
-      "00:00:00:00:00:00",
-      "11:11:11:11:11:11"
+    "scanInterval": 60,
+    "devices": [
+      {
+        "name": "Gaming PC",
+        "mac": "00:00:00:00:00:00"
+      },
+      {
+        "name": "Laptop",
+        "mac": "11:11:11:11:11:11"
+      }
     ],
     "scanInterfaces":
     [
