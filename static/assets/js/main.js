@@ -56,9 +56,9 @@ function loadData() {
         const msPerYear = msPerDay * 365;
     
         var elapsed = currentDate - parsedLastSeen;
-    
+
         if (elapsed < msPerMinute) {
-            lastSeen = Math.floor(elapsed/1000) + ' seconds ago';   
+            lastSeen = 'Just now';
         }
     
         else if (elapsed < msPerHour) {
@@ -138,3 +138,4 @@ function powerButtonPressed() {
 }
 
 loadData();
+setInterval(loadData, 60000);
