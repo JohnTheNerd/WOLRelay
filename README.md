@@ -20,8 +20,6 @@ Please keep in mind that ARP scans can cause disruption in the network if done t
 
 - Clone this Git repository.
 
-- Install all dependencies by running `pip3 install -r requirements.txt`
-
 - Edit the configuration file (all fields required unless stated otherwise):
 
     - **APIPort**: The port WOLRelay's Flask API will run on.
@@ -43,6 +41,10 @@ Please keep in mind that ARP scans can cause disruption in the network if done t
         - **scanInterfaces**: This field is optional. A list of strings, indicating the names of network interfaces to sniff ARP packets from.
 
         - **devices**: Required if ARP is enabled. A list of objects with two keys, "name" defining the display name and "mac" defining the MAC address.
+
+- If you have Docker Compose installed, simply run `docker-compose up` and everything should start running!
+
+- Otherwise, install all dependencies by running `pip3 install -r requirements.txt`
 
 - If you are running this in a production environment, it is recommended that you serve the files in the `static` folder inside an actual web server and just proxy the API endpoints mentioned below to this application. Although WOLRelay will happily serve the front-end, it will not be as performant.
 
