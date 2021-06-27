@@ -76,12 +76,14 @@ def sniffARPPackets(interface = None):
 
 def sendARPRequest(interface, destination):
     logger.debug('sending ARP request to ' + destination)
-    scapy.layers.l2.arping(destination, iface=interface, timeout=0, cache=True, verbose=False)
+    scapy.layers.l2.arping(destination, iface=interface, cache=True, verbose=False)
 
-def scanNetwork(scanInterface = None):
+def scanNetwork(threadCount, scanInterface = None):
   while True:
     try:
-      pool = multiprocessing.dummy.Pool(processes=10)
+      # multiprocessing.dummy is used because the arping call is network-bound, so the GIL doesn't matter
+      # it's a light wrapper around threading, meaning we don't incur the cost of creating new processes
+      pool = multiprocessing.dummy.Pool(processes=threadCount)
       processes = []
 
       for network, netmask, _, interface, address, _ in scapy.config.conf.route.routes:
@@ -100,6 +102,7 @@ def scanNetwork(scanInterface = None):
           # skip docker interface
           if interface.startswith('docker') or interface.startswith('br-'):
             continue
+        logger.info('scanning network ' + interface)
         subnet = '.'.join(address.split('.')[:-1])
         IPRange = [subnet + '.' + str(i) for i in range(1, 254)]
         boundARPRequest = functools.partial(sendARPRequest, interface)
@@ -198,14 +201,19 @@ if __name__ == '__main__':
         "ip": None,
         "lastSeen": None
       }
+    
+    if 'scanThreads' in config['arp'].keys():
+      scanThreads = config['arp']['scanThreads']
+    else:
+      scanThreads = 3
 
     if 'scanInterval' in config['arp'].keys():
       if 'scanInterfaces' in config['arp'].keys():
         for interface in config['arp']['scanInterfaces']:
-          scanningProcess = multiprocessing.Process(target=scanNetwork, args=[interface])
+          scanningProcess = multiprocessing.Process(target=scanNetwork, args=[scanThreads, interface])
           scanningProcess.start()
       else:
-        scanningProcess = multiprocessing.Process(target=scanNetwork)
+        scanningProcess = multiprocessing.Process(target=scanNetwork, args=[scanThreads])
         scanningProcess.start()
 
   app.run(config['localIP'], port=config['APIPort'], threaded=True)

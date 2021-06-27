@@ -38,6 +38,8 @@ Please keep in mind that ARP scans can cause disruption in the network if done t
 
         - **scanInterval**: How long should we wait between ARP scans (in seconds)? Remove entirely to disable ARP scanning and rely on ARP announcement packets, but keep in mind that this will have a cost in accuracy as not all devices will send ARP announcements unless specifically requested. ARP scanning currently only works on /24 networks (which is basically every home network).
 
+        - **scanThreads**: How many threads should WOLRelay use to scan the network? This field is optional, with a default of 3.
+
         - **scanInterfaces**: This field is optional. A list of strings, indicating the names of network interfaces to sniff ARP packets from.
 
         - **devices**: Required if ARP is enabled. A list of objects with two keys, "name" defining the display name and "mac" defining the MAC address.

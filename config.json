@@ -9,6 +9,7 @@
   "logLevel": 20,
   "arp": {
     "scanInterval": 60,
+    "scanThreads": 3,
     "devices": [
       {
         "name": "Gaming PC",
