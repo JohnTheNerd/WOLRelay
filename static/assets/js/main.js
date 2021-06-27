@@ -13,6 +13,7 @@ function loadData() {
     let table = document.createElement('table');
     let tableBody = document.createElement('tbody');
     let response = JSON.parse(xmlHTTP.responseText);
+    let nameColumn = document.createElement('th');
     let macColumn = document.createElement('th');
     let ipColumn = document.createElement('th');
     let timestampColumn = document.createElement('th');

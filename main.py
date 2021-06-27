@@ -53,6 +53,7 @@ def processARP(packets):
             name = ARPTable[mac.upper()]['name']
             ARPTable[mac.upper()] = {
               "name": name,
+              "mac": mac.upper(),
               "ip": ip,
               "lastSeen": datetime.datetime.now().isoformat()
             }
@@ -196,6 +197,7 @@ if __name__ == '__main__':
       mac = device['mac']
       ARPTable[mac.upper()] = {
         "name": name,
+        "mac": mac.upper(),
         "ip": None,
         "lastSeen": None
       }
