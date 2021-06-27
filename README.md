@@ -75,5 +75,3 @@ Please keep in mind that ARP scans can cause disruption in the network if done t
 - `/wake` (POST)
 
     - For a given MAC address as `mac` in a JSON body, send a magic packet.
-
-    - Returns HTTP 400 if the MAC address appears to be invalid.
