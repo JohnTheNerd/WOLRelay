@@ -49,13 +49,13 @@ def processARP(packets):
           if packet.hwsrc.upper() in ARPTable.keys():   # only process packets from MAC addresses we care about
             mac = packet.hwsrc
             ip = packet.psrc
-            logging.debug('IP ' + ip + ' is assigned to ' + mac + ' as of ' + datetime.datetime.now().isoformat())
+            logging.debug('IP ' + ip + ' is assigned to ' + mac + ' as of ' + datetime.datetime.now().isoformat() + "Z")
             name = ARPTable[mac.upper()]['name']
             ARPTable[mac.upper()] = {
               "name": name,
               "mac": mac.upper(),
               "ip": ip,
-              "lastSeen": datetime.datetime.now().isoformat()
+              "lastSeen": datetime.datetime.now().isoformat() + "Z"
             }
 
 def sniffARPPackets(interface = None):
