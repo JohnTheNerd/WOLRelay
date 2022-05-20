@@ -2,6 +2,7 @@ version: '3.7'
 services:
   wolrelay:
     init: true
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000"]
       interval: 1m30s
