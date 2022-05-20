@@ -34,11 +34,13 @@ Please keep in mind that ARP scans can cause disruption in the network if done t
 
     - **logLevel**: The logging level, to be passed into the logging standard library. It is set as an integer, [as defined here](https://docs.python.org/3/library/logging.html#levels)
 
-    - **arp**: This entire field is optional, removing it will disable all ARP support. It is a dictionary with keys of:
+    - **arp**: This entire field is optional, removing it will disable all ARP support.
 
-        - **scanInterval**: How long should we wait between ARP scans (in seconds)? Remove entirely to disable ARP scanning and rely on ARP announcement packets, but keep in mind that this will have a cost in accuracy as not all devices will send ARP announcements unless specifically requested. ARP scanning currently only works on /24 networks (which is basically every home network).
+        - **scan**: Set to `true` if you would like to send ARP requests to all MAC addresses defined in _devices_. Set to `false` to rely on ARP announcement packets. Keep in mind that this will have a cost in accuracy as not all devices will send ARP announcements unless specifically requested.
 
-        - **scanInterfaces**: This field is optional. A list of strings, indicating the names of network interfaces to sniff ARP packets from.
+        - **interval**: Required if `scan` is set to true. Length in seconds to wait between scans.
+
+        - **interface**: Name of the network interface to use for sniffing ARP packets and/or sending ARP requests.
 
         - **devices**: Required if ARP is enabled. A list of objects with two keys, "name" defining the display name and "mac" defining the MAC address.
 
@@ -50,7 +52,7 @@ Please keep in mind that ARP scans can cause disruption in the network if done t
 
 - This application requires the "cap_net_raw" Linux capability to scan the network for ARP packets and to send the magic packet. To do this, you can do either of:
 
-    - Run the application _as a superuser_. For obvious reasons this is not recommended.
+    - Run the application _as a superuser_. This is not secure and hence is not recommended.
 
     - Grant the "cap_net_raw" capability to the Python interpreter by running (change 3.6 to your exact Python version) `sudo setcap cap_net_raw=eip $(which python3.6)` _and_ grant the same capability to tcpdump by running `sudo setcap cap_net_raw=eip $(which tcpdump)`
 
@@ -58,20 +60,20 @@ Please keep in mind that ARP scans can cause disruption in the network if done t
 
 - `/status` (GET)
 
-    - For a given MAC address, returns the IP address and the timestamp for when we recorded it.
+    - Updates the entire ARP table and returns it.
 
     - Returns HTTP 501 if ARP is disabled from the configuration file.
 
 - `/status?mac=00:00:00:00:00:00` (GET)
 
-    - For a given MAC address, returns the IP address and the timestamp for when we recorded it.
+    - First sends an ARP request to the given MAC address, then regardless of the result, returns the last IP address we were able to find alongside a timestamp for when we found it.
 
     - Returns HTTP 501 if ARP is disabled from the configuration file.
 
-    - Returns HTTP 400 if the MAC address is invalid or does not exist in our ARP table.
+    - Returns HTTP 400 if the MAC address does not exist in our ARP table.
 
-    - Returns HTTP 204 if the MAC address does not have a corresponding IP address yet.
+    - Returns HTTP 204 if we still don't know what the IP address is.
 
 - `/wake` (POST)
 
-    - For a given MAC address as `mac` in a JSON body, send a magic packet.
+    - For a given MAC address as `mac` in a JSON body, sends a magic packet.

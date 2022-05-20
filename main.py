@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 
 import datetime
+import ipaddress
+import json
+import logging
 import multiprocessing
 import multiprocessing.dummy
 import os
-import json
-import re
-import traceback
-import functools
-import logging
 import time
+import traceback
 
 import scapy
-from scapy.all import sniff
+import scapy.config
+import scapy.layers.l2
+import scapy.sendrecv
 from wakeonlan import send_magic_packet
 from flask import Flask, request, abort, send_from_directory
 from werkzeug.exceptions import NotFound
@@ -30,6 +31,7 @@ logger.setLevel(config['logLevel'])
 
 multiprocessingManager = multiprocessing.Manager()
 ARPTable = multiprocessingManager.dict()
+cidr = None
 
 @app.before_request
 def beforeRequest():
@@ -38,11 +40,11 @@ def beforeRequest():
     splitHost = request.host
     if ':' in splitHost:
       splitHost = request.host.split(':')[0]
-    if splitHost != "localhost" and splitHost != "127.0.0.1": # whitelist localhost because of Docker health checks
+    if splitHost != "localhost" and splitHost != "127.0.0.1": # whitelist localhost
       if splitHost not in config['hosts']:
         abort(403)
 
-def processARP(packets):
+def processPackets(packets):
   for packet in packets:
     if packet.type == 2054:   # only process ARP packets
         if packet.op == 2:    # only process ARP *reply* packets
@@ -58,70 +60,61 @@ def processARP(packets):
               "lastSeen": datetime.datetime.now().isoformat() + "Z"
             }
 
-def sniffARPPackets(interface = None):
+def sniffPackets(interface):
   if interface:
     try:
-      sniff(prn=processARP, iface=interface, filter="(arp[6:2] = 2)")  # run scapy with BPF for ARP packets with opcode 2
+      scapy.sendrecv.sniff(prn=processPackets, iface=interface, filter="(arp[6:2] = 2)")  # run scapy with BPF for ARP packets with opcode 2
     except Exception:
       logger.warning("Running scapy in filtered mode failed, filtering without the help of Berkeley Packet Filtering. This is going to be VERY slow and unreliable. You should try installing tcpdump if you're on Linux, and Npcap if you're on Windows.")
       traceback.print_exc()
-      sniff(prn=processARP)     # filtering failed, fall back to inspecting every packet
+      scapy.sendrecv.sniff(prn=processPackets)     # filtering failed, fall back to inspecting every packet
   else:
     try:
-      sniff(prn=processARP, filter="(arp[6:2] = 2)")  # run scapy with BPF for ARP packets with opcode 2
+      scapy.sendrecv.sniff(prn=processPackets, filter="(arp[6:2] = 2)")  # run scapy with BPF for ARP packets with opcode 2
     except Exception:
       logger.warning("Running scapy in filtered mode failed, filtering without the help of Berkeley Packet Filtering. This is going to be VERY slow and unreliable. You should try installing tcpdump if you're on Linux, and Npcap if you're on Windows.")
       traceback.print_exc()
-      sniff(prn=processARP)     # filtering failed, fall back to inspecting every packet
+      scapy.sendrecv.sniff(prn=processPackets)     # filtering failed, fall back to inspecting every packet
 
-def sendARPRequest(interface, destination):
-    logger.debug('sending ARP request to ' + destination)
-    scapy.layers.l2.arping(destination, iface=interface, timeout=0, cache=True, verbose=False)
-
-def scanNetwork(scanInterface = None):
+def updateLoop(interface, name, mac, cidr, interval):
   while True:
     try:
-      pool = multiprocessing.dummy.Pool(processes=10)
-      processes = []
+      updateDevice(interface, name, mac, cidr)
+      time.sleep(interval)
+    except Exception:
+      logger.error(f"An exception has occurred while trying to update device {name}! Exception details: \n" + traceback.format_exc())
+      time.sleep(interval)
 
-      for network, netmask, _, interface, address, _ in scapy.config.conf.route.routes:
-
-        if interface:
-          if interface != scanInterface:
-            continue
-        else:
-          # skip loopback network and default gw
-          if network == 0 or interface == 'lo' or address == '127.0.0.1' or address == '0.0.0.0':
-            continue
-
-          if netmask <= 0 or netmask == 0xFFFFFFFF:
-            continue
-
-          # skip docker interface
-          if interface.startswith('docker') or interface.startswith('br-'):
-            continue
-        subnet = '.'.join(address.split('.')[:-1])
-        IPRange = [subnet + '.' + str(i) for i in range(1, 254)]
-        boundARPRequest = functools.partial(sendARPRequest, interface)
-        processes.append(pool.map_async(boundARPRequest, IPRange))
-
-      for process in processes:
-        process.get()
-      pool.close()
-      pool.join()
-    except:
-      logger.warning('scanning the network failed! exception details: ' + traceback.format_exc())
-    finally:
-      time.sleep(config['arp']['scanInterval'])
+def updateDevice(interface, name, mac, cidr):
+  # craft the ARP ping packets for the entire CIDR range, to the given MAC address
+  arp = scapy.layers.l2.ARP()
+  arp.pdst = cidr
+  ether = scapy.layers.l2.Ether()
+  ether.dst = mac
+  packet = ether / arp
+  # send ARP ping packets and get the first response
+  # if the target does not respond in 2 seconds, it's probably dead
+  answer = scapy.sendrecv.srp1(packet, iface = interface, timeout = 2)
+  if answer:
+    mac = answer.hwsrc
+    ip = answer.psrc
+    logging.debug('IP ' + ip + ' is assigned to ' + mac + ' as of ' + datetime.datetime.now().isoformat() + "Z")
+    name = ARPTable[mac.upper()]['name']
+    ARPTable[mac.upper()] = {
+      "name": name,
+      "mac": mac.upper(),
+      "ip": ip,
+      "lastSeen": datetime.datetime.now().isoformat() + "Z"
+    }
 
 """
 For a given MAC address, returns the IP address and the timestamp for when we recorded it.
 
-Returns HTTP501 if ARP is disabled from the configuration file.
-Returns HTTP400 if the MAC address is invalid or does not exist in our ARP table.
-Returns HTTP204 if the MAC address does not have a corresponding IP address yet.
+Returns HTTP 501 if ARP is disabled from the configuration file.
+Returns HTTP 400 if the MAC address does not exist in our ARP table.
+Returns HTTP 204 if the MAC address does not have a corresponding IP address yet.
 
-@mac MAC address to scan ARP table for. If undefined, data for all MAC addresses will be returned.
+@mac MAC address to scan ARP table for. If not defined, data for all MAC addresses will be returned.
 """
 @app.route('/status')
 def status():
@@ -129,25 +122,32 @@ def status():
   if 'mac' in request.args:
     mac = request.args.get('mac')
     mac = mac.upper()
-
   if 'arp' not in config.keys():
     return (json.dumps({"error": "ARP is disabled in the configuration file!"}), 501)
   if mac:
     if mac not in ARPTable.keys():
       return (json.dumps({"error": "The given MAC address is not defined in the configuration file!"}), 400)
+    # if ARP scanning is enabled, try to update device information right before we serve the response
+    if config['arp']['scan']:
+      name = ARPTable[mac]['name']
+      interface = config['arp']['interface']
+      updateDevice(interface, name, mac, cidr)
     if not ARPTable[mac]:
       return (json.dumps({"error": "We don't have any information about this MAC address yet!"}), 204)
     return json.dumps(ARPTable[mac])
   else:
     result = []
     for mac in ARPTable.keys():
+      # if ARP scanning is enabled, try to update the entire ARP table right before we serve the response
+      if config['arp']['scan']:
+        name = ARPTable[mac]['name']
+        interface = config['arp']['interface']
+        updateDevice(interface, name, mac, cidr)
       result.append(ARPTable[mac])
     return json.dumps(result)
 
 """
 Sends a Wake-on-LAN "magic packet" to the specified MAC address.
-
-Returns HTTP400 if the MAC address appears to be invalid.
 
 @mac MAC address to send packet to.
 """
@@ -155,7 +155,6 @@ Returns HTTP400 if the MAC address appears to be invalid.
 def wakeDevice():
   mac = request.json['mac']
   mac = mac.upper()
-
   try:
     send_magic_packet(mac, ip_address=config['broadcastAddress'], port=config['broadcastPort'])
     return json.dumps({"error": None})
@@ -180,14 +179,10 @@ def staticIndex():
   return send_from_directory(os.path.join(scriptPath, 'static'), "index.html")
 
 if __name__ == '__main__':
-  if 'arp' in config.keys():
-    if 'scanInterfaces' in config['arp'].keys():
-      for interface in config['arp']['scanInterfaces']:
-        sniffingProcess = multiprocessing.Process(target=sniffARPPackets, args=[interface])
-        sniffingProcess.start()
-    else:
-      sniffingProcess = multiprocessing.Process(target=sniffARPPackets)
-      sniffingProcess.start()
+  if 'arp' in config:
+    interface = config['arp']['interface']
+    sniffingProcess = multiprocessing.Process(target=sniffPackets, args=[interface])
+    sniffingProcess.start()
 
     for device in config['arp']['devices']:
       name = device['name']
@@ -199,13 +194,29 @@ if __name__ == '__main__':
         "lastSeen": None
       }
 
-    if 'scanInterval' in config['arp'].keys():
-      if 'scanInterfaces' in config['arp'].keys():
-        for interface in config['arp']['scanInterfaces']:
-          scanningProcess = multiprocessing.Process(target=scanNetwork, args=[interface])
-          scanningProcess.start()
-      else:
-        scanningProcess = multiprocessing.Process(target=scanNetwork)
+    if config['arp']['scan']:
+      scanInterface = config['arp']['interface']
+      interval = config['arp']['interval']
+
+      # find the network CIDR by searching through the routing table for the interface we want to scan on
+      for network, netmask, _, interface, address, _ in scapy.config.conf.route.routes:
+        if scanInterface != interface:
+          continue
+
+        # convert netmask from an integer format to a string
+        # otherwise ipaddress.IPv4Network will reject it
+        netmaskString = str(ipaddress.IPv4Address(netmask))
+        network = ipaddress.IPv4Network(f'{address}/{netmaskString}', strict=False)
+        # convert the IPv4Network object to a string to get the network in CIDR notation
+        cidr = str(network)
+
+      if not cidr:
+        raise Exception(f'Failed to calculate CIDR from the provided network interface name {scanInterface}')
+
+      for device in config['arp']['devices']:
+        name = device['name']
+        mac = device['mac']
+        scanningProcess = multiprocessing.Process(target=updateLoop, args=[scanInterface, name, mac, cidr, interval])
         scanningProcess.start()
 
   app.run(config['localIP'], port=config['APIPort'], threaded=True)
