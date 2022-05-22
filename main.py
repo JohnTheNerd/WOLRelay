@@ -127,22 +127,12 @@ def status():
   if mac:
     if mac not in ARPTable.keys():
       return (json.dumps({"error": "The given MAC address is not defined in the configuration file!"}), 400)
-    # if ARP scanning is enabled, try to update device information right before we serve the response
-    if config['arp']['scan']:
-      name = ARPTable[mac]['name']
-      interface = config['arp']['interface']
-      updateDevice(interface, name, mac, cidr)
     if not ARPTable[mac]:
       return (json.dumps({"error": "We don't have any information about this MAC address yet!"}), 204)
     return json.dumps(ARPTable[mac])
   else:
     result = []
     for mac in ARPTable.keys():
-      # if ARP scanning is enabled, try to update the entire ARP table right before we serve the response
-      if config['arp']['scan']:
-        name = ARPTable[mac]['name']
-        interface = config['arp']['interface']
-        updateDevice(interface, name, mac, cidr)
       result.append(ARPTable[mac])
     return json.dumps(result)
 
@@ -160,6 +150,41 @@ def wakeDevice():
     return json.dumps({"error": None})
   except Exception:
     return (json.dumps({"error": traceback.format_exc()}), 500)
+
+"""
+If `mac` is defined in the JSON body, updates the ARP table for that entry. If not, updates the entire ARP table. Afterwards, returns the entire ARP table.
+
+Returns HTTP 501 if ARP scanning is disabled in the configuration file.
+Returns HTTP 400 if the MAC address provided does not exist in our ARP table.
+
+@mac MAC address to update. If omitted, updates the entire table.
+"""
+@app.route('/update', methods=['POST'])
+def update():
+  if 'arp' not in config.keys():
+    return (json.dumps({"error": "ARP is disabled in the configuration file!"}), 501)
+  mac = None
+  if request.is_json:
+    if 'mac' in request.json:
+      mac = request.json['mac']
+      mac = mac.upper()
+  if mac:
+    if not config['arp']['scan']:
+      return (json.dumps({"error": "ARP scanning is disabled in the configuration file!"}), 501)
+    if mac not in ARPTable.keys():
+      return (json.dumps({"error": "The given MAC address is not defined in the configuration file!"}), 400)
+    name = ARPTable[mac]['name']
+    interface = config['arp']['interface']
+    updateDevice(interface, name, mac, cidr)
+    return json.dumps(ARPTable[mac])
+  else:
+    result = []
+    for mac in ARPTable.keys():
+      name = ARPTable[mac]['name']
+      interface = config['arp']['interface']
+      updateDevice(interface, name, mac, cidr)
+      result.append(ARPTable[mac])
+    return json.dumps(result)
 
 # hackity hack
 # serve static files from the static directory

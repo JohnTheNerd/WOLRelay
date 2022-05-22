@@ -60,7 +60,7 @@ Please keep in mind that ARP scans can cause disruption in the network if done t
 
 - `/status` (GET)
 
-    - Updates the entire ARP table and returns it.
+    - Returns the entire ARP table.
 
     - Returns HTTP 501 if ARP is disabled from the configuration file.
 
@@ -73,6 +73,14 @@ Please keep in mind that ARP scans can cause disruption in the network if done t
     - Returns HTTP 400 if the MAC address does not exist in our ARP table.
 
     - Returns HTTP 204 if we still don't know what the IP address is.
+
+- `/update` (POST)
+
+    - If `mac` is defined in the JSON body, updates the ARP table for that entry. If not, updates the entire ARP table. Afterwards, returns the entire ARP table.
+
+    - Returns HTTP 501 if ARP scanning is disabled in the configuration file.
+
+    - Returns HTTP 400 if the MAC address provided does not exist in our ARP table.
 
 - `/wake` (POST)
 
