@@ -6,13 +6,40 @@ function loadData() {
       refreshButton.parentElement.setAttribute('onclick','void()');
   }
 
-
   var xmlHTTP = new XMLHttpRequest();
   xmlHTTP.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
+        updateTable(xmlHTTP.responseText);
+        setInterval(loadData, 60000);
+    }
+  };
+
+  xmlHTTP.open("GET", "status", true);
+  xmlHTTP.send();
+}
+
+function refreshData() {
+    let refreshButton = document.getElementById('refreshButton');
+    if (refreshButton) {
+        refreshButton.classList.add("fa-spin");
+        refreshButton.parentElement.setAttribute('onclick','void()');
+    }
+
+    var xmlHTTP = new XMLHttpRequest();
+    xmlHTTP.onreadystatechange = function() {
+      if (this.readyState == 4 && this.status == 200) {
+          updateTable(xmlHTTP.responseText)
+      }
+    };
+
+    xmlHTTP.open("POST", "update", true);
+    xmlHTTP.send();
+}
+
+function updateTable(response) {
+    let parsedResponse = JSON.parse(response);
     let table = document.createElement('table');
     let tableBody = document.createElement('tbody');
-    let response = JSON.parse(xmlHTTP.responseText);
     let nameColumn = document.createElement('th');
     let macColumn = document.createElement('th');
     let ipColumn = document.createElement('th');
@@ -22,7 +49,7 @@ function loadData() {
     macColumn.innerHTML = 'MAC Address';
     ipColumn.innerHTML = 'IP Address';
     timestampColumn.innerHTML = 'Last Seen';
-    actionsColumn.innerHTML = '<a href="#" onclick="loadData()"><i class="fas fa-sync" id="refreshButton" title="Refresh list"></i></a>'
+    actionsColumn.innerHTML = '<a href="#" onclick="refreshData()"><i class="fas fa-sync" id="refreshButton" title="Refresh list"></i></a>'
     actionsColumn.classList.add("tinyTD");
     // add fa-spin class to item with ID refreshButton
     tableBody.appendChild(nameColumn);
@@ -30,21 +57,21 @@ function loadData() {
     tableBody.appendChild(ipColumn);
     tableBody.appendChild(timestampColumn);
     tableBody.appendChild(actionsColumn);
-    for (const id in response) {
-      let row = document.createElement('tr');
+    for (const id in parsedResponse) {
+        let row = document.createElement('tr');
 
-      let name = response[id]['name'];
-      if (name == null) name = "&mdash;";
+        let name = parsedResponse[id]['name'];
+        if (name == null) name = "&mdash;";
 
-      let mac = response[id]['mac'];
-      if (mac == null) mac = "&mdash;";
+        let mac = parsedResponse[id]['mac'];
+        if (mac == null) mac = "&mdash;";
 
-      let ip = response[id]['ip'];
-      if (ip == null) ip = "&mdash;";
+        let ip = parsedResponse[id]['ip'];
+        if (ip == null) ip = "&mdash;";
 
-      let lastSeen = response[id]['lastSeen'];
-      if (lastSeen == null) lastSeen = "&mdash;";
-      else {
+        let lastSeen = parsedResponse[id]['lastSeen'];
+        if (lastSeen == null) lastSeen = "&mdash;";
+        else {
 
         parsedLastSeen = Date.parse(lastSeen);
         currentDate = Date.now();
@@ -95,37 +122,32 @@ function loadData() {
             }
             else lastSeen = 'approximately ' + Math.floor(elapsed/msPerYear ) + ' years ago';
         }
-      }
+        }
 
-      var cell = document.createElement('td');
-      cell.innerHTML = name;
-      row.appendChild(cell);
-      var cell = document.createElement('td');
-      cell.innerHTML = mac;
-      row.appendChild(cell);
-      var cell = document.createElement('td');
-      cell.innerHTML = ip;
-      row.appendChild(cell);
-      var cell = document.createElement('td');
-      cell.innerHTML = lastSeen;
-      row.appendChild(cell);
-      var cell = document.createElement('td');
-      cell.innerHTML = '<a href="#" onclick="wakeDevice(\'' + mac + '\')"><i class="fas fa-power-off" title="Power on"></i></a>';
-      cell.classList.add("tinyTD");
-      row.appendChild(cell);
+        var cell = document.createElement('td');
+        cell.innerHTML = name;
+        row.appendChild(cell);
+        var cell = document.createElement('td');
+        cell.innerHTML = mac;
+        row.appendChild(cell);
+        var cell = document.createElement('td');
+        cell.innerHTML = ip;
+        row.appendChild(cell);
+        var cell = document.createElement('td');
+        cell.innerHTML = lastSeen;
+        row.appendChild(cell);
+        var cell = document.createElement('td');
+        cell.innerHTML = '<a href="#" onclick="wakeDevice(\'' + mac + '\')"><i class="fas fa-power-off" title="Power on"></i></a>';
+        cell.classList.add("tinyTD");
+        row.appendChild(cell);
 
-      tableBody.appendChild(row);
+        tableBody.appendChild(row);
     }
     table.appendChild(tableBody);
     table.id = 'deviceTable';
     oldTable = document.getElementById('deviceTable');
     oldTable.parentNode.replaceChild(table, oldTable);
     document.getElementById('deviceSection').style.display = 'block';
-    }
-  };
-
-  xmlHTTP.open("GET", "status", true);
-  xmlHTTP.send();
 }
 
 function wakeDevice(mac) {
@@ -153,4 +175,3 @@ function powerButtonPressed() {
 }
 
 loadData();
-setInterval(loadData, 60000);

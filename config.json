@@ -3,12 +3,11 @@
   "broadcastAddress": "255.255.255.255",
   "broadcastPort": 9,
   "localIP": "0.0.0.0",
-  "hosts": [
-    "192.168.2.100"
-  ],
   "logLevel": 20,
   "arp": {
-    "scanInterval": 60,
+    "scan": true,
+    "interval": 60,
+    "interface": "wlan0",
     "devices": [
       {
         "name": "Gaming PC",
@@ -18,11 +17,6 @@
         "name": "Laptop",
         "mac": "11:11:11:11:11:11"
       }
-    ],
-    "scanInterfaces":
-    [
-      "wlan0",
-      "eth0"
     ]
   }
 }
