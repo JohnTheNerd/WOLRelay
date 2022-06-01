@@ -1,3 +1,4 @@
+let intervalSet = false;
 
 function loadData() {
   let refreshButton = document.getElementById('refreshButton');
@@ -10,7 +11,10 @@ function loadData() {
   xmlHTTP.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
         updateTable(xmlHTTP.responseText);
-        setInterval(loadData, 60000);
+        if (!intervalSet) {
+            setInterval(loadData, 60000);
+            intervalSet = true;
+        };
     }
   };
 
